@@ -78,6 +78,7 @@ if [ "$MODE" = "--image" ]; then
         --env "PATHFINDER_ETHEREUM_API_URL=${ETHEREUM_API_URL}" \
         --env PATHFINDER_NETWORK=sepolia-testnet \
         --env PATHFINDER_MONITOR_ADDRESS='[::]:9546' \
+        --env PATHFINDER_RPC_COMPILER_CONCURRENCY_LIMIT=1 \
         "$SUBJECT" >/dev/null
 else
     if [ ! -x "$SUBJECT" ]; then
@@ -92,6 +93,7 @@ else
     PATHFINDER_NETWORK=sepolia-testnet \
     PATHFINDER_HTTP_RPC_ADDRESS="127.0.0.1:${RPC_PORT}" \
     PATHFINDER_MONITOR_ADDRESS="127.0.0.1:${MONITOR_PORT}" \
+    PATHFINDER_RPC_COMPILER_CONCURRENCY_LIMIT=1 \
         "$SUBJECT" >"$WORK_DIR/pathfinder.log" 2>&1 &
     PATHFINDER_PID=$!
 fi
