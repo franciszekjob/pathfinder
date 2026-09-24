@@ -126,10 +126,17 @@ rpc() {
         "http://127.0.0.1:${RPC_PORT}/rpc/v0_10"
 }
 
+pathfinder_rpc() {
+    curl --fail --silent --show-error \
+        --header 'Content-Type: application/json' \
+        --data "$1" \
+        "http://127.0.0.1:${RPC_PORT}/rpc/pathfinder/v0.1"
+}
+
 # Monitoring starts before RPC, so wait for the RPC endpoint separately.
 deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))
 version=''
-until version="$(rpc '{"jsonrpc":"2.0","method":"pathfinder_version","params":[],"id":1}')"; do
+until version="$(pathfinder_rpc '{"jsonrpc":"2.0","method":"pathfinder_version","params":[],"id":1}')"; do
     if ((SECONDS >= deadline)); then
         echo "Error: Pathfinder RPC did not become available within ${STARTUP_TIMEOUT_SECONDS}s" >&2
         exit 1
