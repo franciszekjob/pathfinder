@@ -9,7 +9,39 @@ on:
       - v[0-9]+.*
 
 jobs:
+    verify-release:
+        name: Verify release metadata
+        runs-on: ubuntu-latest
+        permissions:
+          contents: read
+        steps:
+            - uses: actions/checkout@v5
+            - name: Verify tag, Cargo version, and changelog
+              run: |
+                set -euo pipefail
+
+                # 1. Get the version from the git tag (e.g., v1.2.3 -> 1.2.3)
+                tag_version="${GITHUB_REF_NAME#v}"
+
+                # 2. Extract Pathfinder's version from Cargo metadata.
+                if ! cargo_version="$(cargo metadata --no-deps --format-version 1 | jq -er '.packages[] | select(.name == "pathfinder").version')"; then
+                  echo "::error::Could not read Pathfinder version from Cargo metadata"
+                  exit 1
+                fi
+
+                if [ "$tag_version" != "$cargo_version" ]; then
+                  echo "::error::Tag version ($tag_version) does not match Cargo.toml version ($cargo_version)"
+                  exit 1
+                fi
+
+                # 3. Check that the changelog contains an entry for the release.
+                if ! grep -Fq "## [$tag_version] - " CHANGELOG.md; then
+                  echo "::error::CHANGELOG.md has no release entry for $tag_version"
+                  exit 1
+                fi
+
     create-draft-release:
+        needs: verify-release
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v5
