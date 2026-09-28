@@ -1,3 +1,5 @@
+# FORK TEST: builds images without publishing them.
+#
 # Builds and uploads docker images whenever a version tag is pushed. When a release is created,
 # the associated image is then tagged with the version number and latest.
 
@@ -24,7 +26,7 @@ jobs:
   # Build a docker image unless this was triggered by a release.
   build-image:
     if: github.event_name != 'release'
-    runs-on: pathfinder-large-ubuntu
+    runs-on: ubuntu-24.04
     outputs:
       pathfinder_version: ${{ steps.generate_version.outputs.pathfinder_version }}
     steps:
@@ -61,11 +63,6 @@ jobs:
           buildkitd-config-inline: |
             [worker.oci]
               max-parallelism = 4
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       # Required for git security reasons. See https://github.com/rustyhorde/vergen/pull/126#issuecomment-1201088162
       - name: Vergen git safe directory
         run: git config --global --add safe.directory /workspace
@@ -81,28 +78,17 @@ jobs:
           build-args: |
             PATHFINDER_FORCE_VERSION=${{ steps.generate_version.outputs.pathfinder_version }}
           builder: ${{ steps.buildx.outputs.name }}
-          push: true
+          push: false
           labels: ${{ steps.meta.outputs.labels }}
           tags: swmansion/pathfinder:snapshot-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # TODO(#3563): Remove block below and the EQLABS_* secrets once the migration window closes.
-      - name: Login to Docker Hub (legacy eqlabs namespace)
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.EQLABS_DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.EQLABS_DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Mirror snapshot to eqlabs/pathfinder
-        run: docker buildx imagetools create -t eqlabs/pathfinder:snapshot-${{ github.sha }} swmansion/pathfinder:snapshot-${{ github.sha }}
-
   smoke-test-image:
     needs: build-image
     # On release events, build-image is skipped and the snapshot built for the same
     # tagged commit is tested again before assigning the final Docker tags.
-    if: >-
-      always() &&
-      (github.event_name == 'release' || needs.build-image.result == 'success')
+    # This fork-only test does not publish the image required by the smoke tests.
+    if: ${{ false }}
     timeout-minutes: 20
     strategy:
       # Test both architectures even if one of them fails.
