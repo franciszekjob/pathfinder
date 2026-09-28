@@ -4,9 +4,12 @@ permissions:
   contents: write
 
 on:
-  push:
-    tags:
-      - v[0-9]+.*
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version to verify
+        required: true
+        default: 0.24.0
 
 jobs:
     verify-release:
@@ -20,8 +23,9 @@ jobs:
               run: |
                 set -euo pipefail
 
-                # 1. Get the version from the git tag (e.g., v1.2.3 -> 1.2.3)
-                tag_version="${GITHUB_REF_NAME#v}"
+                # 1. Get the version from the manual workflow input.
+                tag_version="${{ inputs.version }}"
+                tag_version="${tag_version#v}"
 
                 # 2. Extract Pathfinder's version from Cargo metadata.
                 if ! cargo_version="$(cargo metadata --no-deps --format-version 1 | jq -er '.packages[] | select(.name == "pathfinder").version')"; then
@@ -40,43 +44,43 @@ jobs:
                   exit 1
                 fi
 
-    create-draft-release:
-        needs: verify-release
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v5
-            - uses: taiki-e/create-gh-release-action@v1
-              with:
-                # (Optional) Path to changelog.
-                changelog: CHANGELOG.md
-                # (Optional) Create a draft release.
-                # [default value: false]
-                draft: true
-                # (Required) GitHub token for creating GitHub Releases.
-                token: ${{ secrets.GITHUB_TOKEN }}
+    # create-draft-release:
+    #     needs: verify-release
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - uses: actions/checkout@v5
+    #         - uses: taiki-e/create-gh-release-action@v1
+    #           with:
+    #             # (Optional) Path to changelog.
+    #             changelog: CHANGELOG.md
+    #             # (Optional) Create a draft release.
+    #             # [default value: false]
+    #             draft: true
+    #             # (Required) GitHub token for creating GitHub Releases.
+    #             token: ${{ secrets.GITHUB_TOKEN }}
 
-    upload-assets:
-        needs: create-draft-release
-        strategy:
-            matrix:
-              include:
-                - target: x86_64-unknown-linux-gnu
-                  os: ubuntu-22.04
-                - target: aarch64-unknown-linux-gnu
-                  os: ubuntu-22.04-arm
-                - target: x86_64-apple-darwin
-                  os: macos-latest
-                - target: aarch64-apple-darwin
-                  os: macos-latest
-        runs-on: ${{ matrix.os }}
-        steps:
-            - uses: actions/checkout@v5
-            - uses: arduino/setup-protoc@v3
-              with:
-                repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - uses: taiki-e/upload-rust-binary-action@v1
-              with:
-                bin: pathfinder
-                target: ${{ matrix.target }}
-                profile: release-lto
-                token: ${{ secrets.GITHUB_TOKEN }}
+    # upload-assets:
+    #     needs: create-draft-release
+    #     strategy:
+    #         matrix:
+    #           include:
+    #             - target: x86_64-unknown-linux-gnu
+    #               os: ubuntu-22.04
+    #             - target: aarch64-unknown-linux-gnu
+    #               os: ubuntu-22.04-arm
+    #             - target: x86_64-apple-darwin
+    #               os: macos-latest
+    #             - target: aarch64-apple-darwin
+    #               os: macos-latest
+    #     runs-on: ${{ matrix.os }}
+    #     steps:
+    #         - uses: actions/checkout@v5
+    #         - uses: arduino/setup-protoc@v3
+    #           with:
+    #             repo-token: ${{ secrets.GITHUB_TOKEN }}
+    #         - uses: taiki-e/upload-rust-binary-action@v1
+    #           with:
+    #             bin: pathfinder
+    #             target: ${{ matrix.target }}
+    #             profile: release-lto
+    #             token: ${{ secrets.GITHUB_TOKEN }}
