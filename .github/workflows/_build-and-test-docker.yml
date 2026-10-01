@@ -43,7 +43,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: swmansion/pathfinder
+          images: fjobswm/pathfinder
       - name: Checkout sources
         uses: actions/checkout@v5
         with:
@@ -94,7 +94,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           push: true
           labels: ${{ steps.meta.outputs.labels }}
-          tags: swmansion/pathfinder:snapshot-${{ github.sha }}
+          tags: fjobswm/pathfinder:snapshot-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -105,7 +105,7 @@ jobs:
           username: ${{ secrets.EQLABS_DOCKER_HUB_USERNAME }}
           password: ${{ secrets.EQLABS_DOCKER_HUB_ACCESS_TOKEN }}
       - name: Mirror snapshot to eqlabs/pathfinder
-        run: docker buildx imagetools create -t eqlabs/pathfinder:snapshot-${{ github.sha }} swmansion/pathfinder:snapshot-${{ github.sha }}
+        run: docker buildx imagetools create -t eqlabs/pathfinder:snapshot-${{ github.sha }} fjobswm/pathfinder:snapshot-${{ github.sha }}
 
   smoke-test-image:
     needs: build-image
@@ -129,8 +129,8 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Pull ${{ matrix.architecture }} snapshot
-        run: docker pull swmansion/pathfinder:snapshot-${{ github.sha }}
+        run: docker pull fjobswm/pathfinder:snapshot-${{ github.sha }}
       - name: Smoke test ${{ matrix.architecture }} snapshot
         env:
           EXPECTED_PATHFINDER_VERSION: ${{ needs.build-image.outputs.pathfinder_version }}
-        run: scripts/smoke_test.sh --image swmansion/pathfinder:snapshot-${{ github.sha }} "$EXPECTED_PATHFINDER_VERSION"
+        run: scripts/smoke_test.sh --image fjobswm/pathfinder:snapshot-${{ github.sha }} "$EXPECTED_PATHFINDER_VERSION"

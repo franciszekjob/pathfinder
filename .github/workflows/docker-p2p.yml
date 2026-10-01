@@ -23,7 +23,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: swmansion/pathfinder
+          images: fjobswm/pathfinder
       - name: Checkout sources
         uses: actions/checkout@v5
         with:
@@ -74,8 +74,8 @@ jobs:
           push: true
           labels: ${{ steps.meta.outputs.labels }}
           tags: |
-            swmansion/pathfinder:snapshot-p2p-${{ github.sha }}
-            swmansion/pathfinder:latest-p2p
+            fjobswm/pathfinder:snapshot-p2p-${{ github.sha }}
+            fjobswm/pathfinder:latest-p2p
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -87,5 +87,5 @@ jobs:
           password: ${{ secrets.EQLABS_DOCKER_HUB_ACCESS_TOKEN }}
       - name: Mirror P2P images to eqlabs/pathfinder
         run: |
-          docker buildx imagetools create -t eqlabs/pathfinder:snapshot-p2p-${{ github.sha }} swmansion/pathfinder:snapshot-p2p-${{ github.sha }}
-          docker buildx imagetools create -t eqlabs/pathfinder:latest-p2p swmansion/pathfinder:snapshot-p2p-${{ github.sha }}
+          docker buildx imagetools create -t franciszekjob/pathfinder:snapshot-p2p-${{ github.sha }} fjobswm/pathfinder:snapshot-p2p-${{ github.sha }}
+          docker buildx imagetools create -t franciszekjob/pathfinder:latest-p2p fjobswm/pathfinder:snapshot-p2p-${{ github.sha }}

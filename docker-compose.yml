@@ -1,7 +1,7 @@
 version: "3"
 services:
   starknet-node:
-    image: swmansion/pathfinder:latest
+    image: fjobswm/pathfinder:latest
     restart: unless-stopped
     environment:
       - RUST_LOG=info
