@@ -105,7 +105,7 @@ jobs:
           username: ${{ secrets.EQLABS_DOCKER_HUB_USERNAME }}
           password: ${{ secrets.EQLABS_DOCKER_HUB_ACCESS_TOKEN }}
       - name: Mirror snapshot to eqlabs/pathfinder
-        run: docker buildx imagetools create -t eqlabs/pathfinder:snapshot-${{ github.sha }} fjobswm/pathfinder:snapshot-${{ github.sha }}
+        run: docker buildx imagetools create -t franciszekjob/pathfinder:snapshot-${{ github.sha }} fjobswm/pathfinder:snapshot-${{ github.sha }}
 
   smoke-test-image:
     needs: build-image
