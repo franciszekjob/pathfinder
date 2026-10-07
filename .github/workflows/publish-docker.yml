@@ -1,4 +1,4 @@
-# Promotes the tested snapshot built while preparing the release to its final Docker tags.
+# Promotes the image digest recorded by a successful Prepare release run.
 
 name: Publish Docker image
 
@@ -12,16 +12,44 @@ permissions:
 jobs:
   publish-image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     env:
       RELEASE_TAG: ${{ github.event.release.tag_name }}
     steps:
-      - name: Read tested Docker image digest
+      - name: Find successful release preparation
+        id: preparation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
-          gh release download "$RELEASE_TAG" --pattern docker-image-digest.txt
-          digest=$(cat docker-image-digest.txt)
+          gh api --method GET --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/prepare-release.yml/runs" \
+            -f head_sha="$RELEASE_SHA" -f branch="$RELEASE_TAG" \
+            -f event=push -f status=success -f per_page=100 > runs.json
+          preparation=$(jq -ec --arg sha "$RELEASE_SHA" --arg tag "$RELEASE_TAG" '
+            [.[] | .workflow_runs[] | select(
+              .head_sha == $sha and .head_branch == $tag and
+              .event == "push" and .status == "completed" and .conclusion == "success"
+            )] |
+            if length == 1 then .[0]
+            else error("Expected exactly one successful Prepare release run for this tag and commit")
+            end
+          ' runs.json)
+          echo "run_id=$(jq -r '.id' <<< "$preparation")" >> "$GITHUB_OUTPUT"
+          echo "run_attempt=$(jq -r '.run_attempt' <<< "$preparation")" >> "$GITHUB_OUTPUT"
+      - name: Download tested Docker image digest
+        uses: actions/download-artifact@v8
+        with:
+          name: docker-image-digest-${{ steps.preparation.outputs.run_attempt }}
+          run-id: ${{ steps.preparation.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: tested-image
+      # Missing or expired artifacts must fail publication; never fall back to a tag.
+      - name: Read tested Docker image digest
+        run: |
+          digest=$(cat tested-image/docker-image-digest.txt)
           if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "::error::Missing or invalid tested Docker image digest"
             exit 1
