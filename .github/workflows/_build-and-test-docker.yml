@@ -2,6 +2,10 @@ name: Build and test Docker image
 
 on:
   workflow_call:
+    outputs:
+      image_digest:
+        description: Digest of the multi-platform image tested by this workflow
+        value: ${{ jobs.build-image.outputs.image_digest }}
     inputs:
       pathfinder_force_version:
         description: 'Set version for pathfinder via PATHFINDER_FORCE_VERSION (defaults to `git describe --tags --dirty`)'
@@ -33,6 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       pathfinder_version: ${{ steps.generate_version.outputs.pathfinder_version }}
+      image_digest: ${{ steps.docker_build.outputs.digest }}
     steps:
       - name: Determine Docker image metadata
         id: meta
@@ -73,7 +78,7 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       # Required for git security reasons. See https://github.com/rustyhorde/vergen/pull/126#issuecomment-1201088162
-      - name: Vergen git safe directory
+      - name: Setup safe git directory for vergen
         run: git config --global --add safe.directory /workspace
       - name: Build
         id: docker_build
@@ -95,6 +100,8 @@ jobs:
 
   smoke-test-image:
     needs: build-image
+    env:
+      IMAGE: fjobswm/pathfinder@${{ needs.build-image.outputs.image_digest }}
     timeout-minutes: 20
     strategy:
       # Test both architectures even if one of them fails.
@@ -115,8 +122,8 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Pull ${{ matrix.architecture }} snapshot
-        run: docker pull fjobswm/pathfinder:snapshot-${{ github.sha }}
+        run: docker pull "$IMAGE"
       - name: Smoke test ${{ matrix.architecture }} snapshot
         env:
           EXPECTED_PATHFINDER_VERSION: ${{ needs.build-image.outputs.pathfinder_version }}
-        run: scripts/smoke_test.sh --image fjobswm/pathfinder:snapshot-${{ github.sha }} "$EXPECTED_PATHFINDER_VERSION"
+        run: scripts/smoke_test.sh --image "$IMAGE" "$EXPECTED_PATHFINDER_VERSION"
